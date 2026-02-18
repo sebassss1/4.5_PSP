@@ -56,12 +56,19 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
     }
 
     private void setAuthentication(Claims claims) {
+        // 1. Extraemos la lista de objetos del claim "authorities"
         List<String> authorities = (List<String>) claims.get("authorities");
+
+        // 2. IMPORTANTE: Debemos convertir esos Strings en objetos SimpleGrantedAuthority
         UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
                 claims.getSubject(),
                 null,
-                authorities.stream().map(SimpleGrantedAuthority::new).collect(Collectors.toList())
+                authorities.stream()
+                        .map(SimpleGrantedAuthority::new) // Esto convierte "ROLE_ADMIN" en una autoridad real
+                        .collect(Collectors.toList())
         );
+
+        // 3. Establecemos la autenticación en el contexto de Spring
         SecurityContextHolder.getContext().setAuthentication(auth);
     }
 

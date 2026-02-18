@@ -19,14 +19,32 @@ public class WebSecurityConfig {
     @Bean
     public SecurityFilterChain configure(HttpSecurity http) throws Exception {
         http
-                // Deshabilitamos CSRF porque usaremos tokens JWT
+                // Deshabilitamos CSRF porque para APIs basadas en tokens JWT no es necesario
                 .csrf((csrf) -> csrf.disable())
+
                 .authorizeHttpRequests(authz -> authz
-                        // Permitimos el acceso libre al endpoint de login
+                        // 1. Permitimos que cualquier persona (sin token) acceda al /login
                         .requestMatchers(HttpMethod.POST, Constans.LOGIN_URL).permitAll()
-                        // Cualquier otra petición requiere que el usuario esté autenticado
+
+                        // 2. REGLAS DE AUTORIZACIÓN POR ROL (Parte 2 de la práctica)
+
+                        // Lectura: Tanto el ADMIN como el USER pueden ver la lista de contactos
+                        .requestMatchers(HttpMethod.GET, "/contactos/**").hasAnyRole("ADMIN", "USER")
+
+                        // Escritura: SOLO el usuario con rol ADMIN puede crear nuevos contactos
+                        .requestMatchers(HttpMethod.POST, "/contactos/**").hasRole("ADMIN")
+
+                        // Modificación: SOLO el ADMIN puede actualizar contactos existentes
+                        .requestMatchers(HttpMethod.PUT, "/contactos/**").hasRole("ADMIN")
+
+                        // Eliminación: SOLO el ADMIN tiene permiso para borrar contactos
+                        .requestMatchers(HttpMethod.DELETE, "/contactos/**").hasRole("ADMIN")
+
+                        // 3. Bloqueo de seguridad: cualquier otra ruta no especificada requiere autenticación
                         .anyRequest().authenticated())
-                // Añadimos nuestro filtro JWT después del filtro de autenticación estándar
+
+                // Registramos nuestro filtro personalizado (JWTAuthorizationFilter)
+                // para que se ejecute después del filtro de autenticación de Spring.
                 .addFilterAfter(jwtAuthorizationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
